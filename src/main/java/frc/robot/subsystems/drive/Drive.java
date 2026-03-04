@@ -56,6 +56,7 @@ import org.littletonrobotics.junction.Logger;
 public class Drive extends SubsystemBase {
   private static Drive instance;
   private static Field2d field = new Field2d();
+  public static boolean velocitylimit = true;
   // TunerConstants doesn't include these constants, so they are declared locally
   static final double ODOMETRY_FREQUENCY = TunerConstants.kCANBus.isNetworkFD() ? 250.0 : 100.0;
   public static final double DRIVE_BASE_RADIUS =
@@ -223,12 +224,12 @@ public class Drive extends SubsystemBase {
     gyroDisconnectedAlert.set(!gyroInputs.connected && Constants.currentMode != Mode.SIM);
 
     SmartDashboard.putNumber("X", this.getPose().getX());
+    SmartDashboard.putBoolean("Velocity Limit Disabled", !velocitylimit);
 
     // distance from goal
     Pose2d pose = this.getPose();
     double robotX = pose.getX();
     double robotY = pose.getY();
-    double robotYaw = pose.getRotation().getRadians(); // radians
     double dx, dy = 0;
     // Vector from robot to goal
     if (DriverStation.getAlliance().get() == Alliance.Blue) {

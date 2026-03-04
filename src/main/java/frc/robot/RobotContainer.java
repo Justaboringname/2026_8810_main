@@ -61,7 +61,6 @@ public class RobotContainer {
       new LoggedTunableNumber("IndexerShootVolts", 12.0);
   public final LoggedTunableNumber BeltShootVolts = new LoggedTunableNumber("BeltShootVolts", 12.0);
   public final LoggedTunableNumber HoodAngle = new LoggedTunableNumber("HoodAngle", 0);
-
   // Dashboard inputs
   private final LoggedDashboardChooser<Command> autoChooser;
   public ShooterSubsystem shooterSubsystem = new ShooterSubsystem();
@@ -209,6 +208,23 @@ public class RobotContainer {
         .leftBumper()
         .whileTrue(new InstantCommand(() -> intakeSubsystem.setIntakeRps(60)))
         .onFalse(new InstantCommand(() -> intakeSubsystem.setIntakeVoltage(0)));
+    // controller
+    //     .rightBumper()
+    //     .whileTrue(
+    //         Commands.run(
+    //             () -> {
+    //               shooterSubsystem.setShooterRps(ShooterTestRPS.getAsDouble());
+    //               shooterSubsystem.setHoodAngle(HoodAngle.getAsDouble());
+    //             },
+    //             shooterSubsystem))
+    //     .onFalse(new InstantCommand(() -> shooterSubsystem.setShooterVoltage(0),
+    // shooterSubsystem));
+    // controller
+    //     .leftBumper()
+    //     .whileTrue(new InstantCommand(() -> feederSubsystem.setIndexerVoltage(8),
+    // feederSubsystem))
+    //     .onFalse(new InstantCommand(() -> feederSubsystem.setIndexerVoltage(0),
+    // feederSubsystem));
     controller.a().onTrue(new PivotInit(intakeSubsystem));
     controller.y().whileTrue(new IntakeSwing(intakeSubsystem, 0, 40));
 
@@ -243,6 +259,10 @@ public class RobotContainer {
     controller
         .rightStick()
         .whileTrue(new AutonTrench(drive, shooterSubsystem, () -> controller.getLeftY()));
+    controller
+        .leftStick()
+        .whileTrue(new InstantCommand(() -> Drive.velocitylimit = false))
+        .onFalse(new InstantCommand(() -> Drive.velocitylimit = true));
 
     // Manual Feed and Swing (POV Down)
     controller

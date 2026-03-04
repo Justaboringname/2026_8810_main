@@ -58,7 +58,7 @@ public class IntakeIOPheonix6 implements IntakeIO {
 
   @Override
   public void intakesetrps(double RPS) {
-    intakeMotor.setControl(intakeVelocityRequest.withVelocity(RPS * 14 / 30));
+    intakeMotor.setControl(intakeVelocityRequest.withVelocity(RPS));
   }
 
   @Override

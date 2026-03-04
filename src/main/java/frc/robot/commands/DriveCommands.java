@@ -52,7 +52,6 @@ public class DriveCommands {
 
     // Square magnitude for more precise control
     linearMagnitude = linearMagnitude * linearMagnitude;
-
     // Return new linear velocity
     return new Pose2d(Translation2d.kZero, linearDirection)
         .transformBy(new Transform2d(linearMagnitude, 0.0, Rotation2d.kZero))
@@ -72,6 +71,9 @@ public class DriveCommands {
           // Get linear velocity
           Translation2d linearVelocity =
               getLinearVelocityFromJoysticks(xSupplier.getAsDouble(), ySupplier.getAsDouble());
+          if (Drive.velocitylimit) {
+            linearVelocity = linearVelocity.times(0.7);
+          }
 
           // Apply rotation deadband
           double omega = MathUtil.applyDeadband(omegaSupplier.getAsDouble(), DEADBAND);

@@ -1,5 +1,6 @@
 package frc.robot.subsystems.ShooterSubsystem;
 
+import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
@@ -41,6 +42,10 @@ public class ShooterIOPheonix6 implements ShooterIO {
     TalonFXConfiguration shooterConfig = new TalonFXConfiguration();
     shooterConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
     shooterConfig.Slot0 = shooterSlot0;
+    shooterConfig.CurrentLimits =
+        new CurrentLimitsConfigs()
+            .withStatorCurrentLimit(Constants.ShooterSubsystemPID.currentlimit)
+            .withStatorCurrentLimitEnable(true);
 
     shooterMotor1.getConfigurator().apply(shooterConfig);
     shooterMotor2.getConfigurator().apply(shooterConfig);
@@ -49,6 +54,7 @@ public class ShooterIOPheonix6 implements ShooterIO {
         new Follower(Constants.MotorCANIds.shooterMotor1CANId, MotorAlignmentValue.Aligned));
     shooterMotor3.setControl(
         new Follower(Constants.MotorCANIds.shooterMotor1CANId, MotorAlignmentValue.Opposed));
+
     TalonFXConfiguration hoodConfig = new TalonFXConfiguration();
     hoodConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
     hoodConfig.Slot0 = new Slot0Configs();
