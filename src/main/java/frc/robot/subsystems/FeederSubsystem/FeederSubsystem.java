@@ -6,16 +6,23 @@ import frc.robot.Robot;
 import org.littletonrobotics.junction.Logger;
 
 public class FeederSubsystem extends SubsystemBase {
-  public static FeederSubsystem m_Instance = null;
+  private static FeederSubsystem m_Instance = null;
 
   private final FeederIO io;
   private final FeederIOInputsAutoLogged inputs = new FeederIOInputsAutoLogged();
 
   public static FeederSubsystem getInstance() {
-    return m_Instance == null ? m_Instance = new FeederSubsystem() : m_Instance;
+    if (m_Instance == null) {
+      throw new IllegalStateException("FeederSubsystem has not been constructed yet");
+    }
+    return m_Instance;
   }
 
   public FeederSubsystem() {
+    if (m_Instance != null) {
+      throw new IllegalStateException("FeederSubsystem already constructed");
+    }
+    m_Instance = this;
     if (Robot.isReal()) {
       io = new FeederIOPheonix6();
     } else {

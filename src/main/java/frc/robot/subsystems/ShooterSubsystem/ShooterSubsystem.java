@@ -8,16 +8,23 @@ import frc.robot.Robot;
 import org.littletonrobotics.junction.Logger;
 
 public class ShooterSubsystem extends SubsystemBase {
-  public static ShooterSubsystem m_Instance = null;
+  private static ShooterSubsystem m_Instance = null;
 
   private final ShooterIO io;
   private final ShooterIOInputsAutoLogged inputs = new ShooterIOInputsAutoLogged();
 
   public static ShooterSubsystem getInstance() {
-    return m_Instance == null ? m_Instance = new ShooterSubsystem() : m_Instance;
+    if (m_Instance == null) {
+      throw new IllegalStateException("ShooterSubsystem has not been constructed yet");
+    }
+    return m_Instance;
   }
 
   public ShooterSubsystem() {
+    if (m_Instance != null) {
+      throw new IllegalStateException("ShooterSubsystem already constructed");
+    }
+    m_Instance = this;
     if (Robot.isReal()) {
       io = new ShooterIOPheonix6();
     } else {

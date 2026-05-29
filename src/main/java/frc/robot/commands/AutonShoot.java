@@ -49,7 +49,7 @@ public class AutonShoot extends Command {
     double robotYaw = pose.getRotation().getRadians(); // radians
     double dx, dy = 0;
     // Vector from robot to goal
-    if (DriverStation.getAlliance().get() == Alliance.Blue) {
+    if (DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue) {
       dx = Constants.aimconstants.bluegoalpos.getX() - robotX;
       dy = Constants.aimconstants.bluegoalpos.getY() - robotY;
     } else {

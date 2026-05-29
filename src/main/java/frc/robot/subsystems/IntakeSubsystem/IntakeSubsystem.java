@@ -6,16 +6,23 @@ import frc.robot.Robot;
 import org.littletonrobotics.junction.Logger;
 
 public class IntakeSubsystem extends SubsystemBase {
-  public static IntakeSubsystem m_Instance = null;
+  private static IntakeSubsystem m_Instance = null;
 
   private final IntakeIO io;
   private final IntakeIOInputsAutoLogged inputs = new IntakeIOInputsAutoLogged();
 
   public static IntakeSubsystem getInstance() {
-    return m_Instance == null ? m_Instance = new IntakeSubsystem() : m_Instance;
+    if (m_Instance == null) {
+      throw new IllegalStateException("IntakeSubsystem has not been constructed yet");
+    }
+    return m_Instance;
   }
 
   public IntakeSubsystem() {
+    if (m_Instance != null) {
+      throw new IllegalStateException("IntakeSubsystem already constructed");
+    }
+    m_Instance = this;
     if (Robot.isReal()) {
       io = new IntakeIOPheonix6();
     } else {
