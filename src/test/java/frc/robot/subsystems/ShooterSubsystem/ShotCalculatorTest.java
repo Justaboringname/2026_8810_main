@@ -3,7 +3,6 @@ package frc.robot.subsystems.ShooterSubsystem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import frc.robot.subsystems.ShooterSubsystem.ShotCalculator.ShooterSetpoint;
 import org.junit.jupiter.api.Test;
 
 /** ShotCalculator 纯逻辑测试(无 HAL,直接 ./gradlew test 跑)。 */
@@ -56,12 +55,37 @@ class ShotCalculatorTest {
   }
 
   @Test
+  void inRangeSetpointIsValid() {
+    // sweep 范围内、默认旋钮:应是可信 setpoint
+    assertTrue(ShotCalculator.calculate(3.0).isValid(), "范围内应 isValid=true");
+    assertTrue(ShotCalculator.calculate(MIN()).isValid(), "近端应 isValid=true");
+    assertTrue(ShotCalculator.calculate(MAX()).isValid(), "远端应 isValid=true");
+  }
+
+  @Test
+  void outOfRangeSetpointIsInvalid() {
+    // fail-safe:距离越界 → isValid=false(superstructure 据此拒绝喂球)
+    assertTrue(!ShotCalculator.calculate(0.5).isValid(), "过近应 isValid=false");
+    assertTrue(!ShotCalculator.calculate(9.0).isValid(), "过远应 isValid=false");
+  }
+
+  @Test
+  void excessiveFlywheelScaleIsInvalid() {
+    // 飞轮 scale 大到超物理上限(90 RPS)→ 不可信,且输出被夹住
+    ShotCalculator.ShooterSetpoint sp = ShotCalculator.calculate(5.0, 77.0, 5.0);
+    assertTrue(!sp.isValid(), "超物理上限应 isValid=false");
+    assertTrue(sp.flywheelRps() <= ShotCalculator.MAX_FLYWHEEL_RPS + EPS, "飞轮 RPS 应被夹到上限内");
+  }
+
+  @Test
   void flywheelScaleIsLinear() {
     double d = 3.0;
-    double base = ShotCalculator.calculate(d, ShotCalculator.DEFAULT_HOOD_LAUNCH_ANGLE_AT_ZERO_DEG, 1.0)
-        .flywheelRps();
-    double doubled = ShotCalculator.calculate(d, ShotCalculator.DEFAULT_HOOD_LAUNCH_ANGLE_AT_ZERO_DEG, 2.0)
-        .flywheelRps();
+    double base =
+        ShotCalculator.calculate(d, ShotCalculator.DEFAULT_HOOD_LAUNCH_ANGLE_AT_ZERO_DEG, 1.0)
+            .flywheelRps();
+    double doubled =
+        ShotCalculator.calculate(d, ShotCalculator.DEFAULT_HOOD_LAUNCH_ANGLE_AT_ZERO_DEG, 2.0)
+            .flywheelRps();
     assertEquals(base * 2.0, doubled, EPS, "flywheelRpsScale 应线性缩放");
   }
 
