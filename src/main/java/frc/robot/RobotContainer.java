@@ -22,7 +22,6 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-import frc.robot.commands.Aimbot;
 import frc.robot.commands.AutonTrench;
 import frc.robot.commands.DriveCommands;
 import frc.robot.commands.IntakeSwing;
@@ -37,6 +36,7 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
+import frc.robot.subsystems.superstructure.Superstructure;
 import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
@@ -66,6 +66,10 @@ public class RobotContainer {
   public ShooterSubsystem shooterSubsystem = new ShooterSubsystem();
   public FeederSubsystem feederSubsystem = new FeederSubsystem();
   public IntakeSubsystem intakeSubsystem = new IntakeSubsystem();
+
+  // 顶层协调器(非 SubsystemBase 工厂):生产带 requirement 的 AimAndShoot 命令,经调度器与手动绑定互锁。
+  public final Superstructure superstructure =
+      new Superstructure(shooterSubsystem, feederSubsystem);
 
   /** The container for the robot. Contains subsystems, OI devices, a nd commands. */
   public RobotContainer() {
@@ -124,7 +128,7 @@ public class RobotContainer {
         break;
     }
 
-    NamedCommands.registerCommand("AIMandShoot", new Aimbot(IndexerShootVolts, BeltShootVolts));
+    NamedCommands.registerCommand("AIMandShoot", superstructure.aimAndShoot());
 
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
@@ -237,7 +241,9 @@ public class RobotContainer {
             new InstantCommand(() -> shooterSubsystem.setHoodZero())
                 .ignoringDisable(true)
                 .alongWith(new InstantCommand(() -> intakeSubsystem.setPivotZero())));
-    controller.rightTrigger().whileTrue(new Aimbot(IndexerShootVolts, BeltShootVolts));
+    // 右扳机 = AimAndShoot:距离查表 spinup + hood + 就绪门控喂球(取代旧 Aimbot)。
+    // 本切片不转底盘——驾驶员手动瞄准 HUB。requires shooter+feeder,与手动绑定自动互锁。归位期间勿按。
+    controller.rightTrigger().whileTrue(superstructure.aimAndShoot());
 
     // Manual Shooter Control (POV Left)
     controller

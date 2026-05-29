@@ -1,163 +1,52 @@
 package frc.robot.subsystems.superstructure;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.commands.AimAndShoot;
 import frc.robot.subsystems.FeederSubsystem.FeederSubsystem;
 import frc.robot.subsystems.ShooterSubsystem.ShooterSubsystem;
-import frc.robot.subsystems.ShooterSubsystem.ShotCalculator.ShooterSetpoint;
-import frc.robot.util.LoggedTunableNumber;
-import org.littletonrobotics.junction.Logger;
 
 /**
- * 顶层协调器(6328 风格的 thin goal-switch)。当前只覆盖 shooter 垂直切片:spinup + hood + feed-gate。
+ * 顶层协调器(非 SubsystemBase 的工厂/持有者)。
  *
- * <h2>为什么是 additive(并存而非替换)</h2>
+ * <h2>为什么不是 SubsystemBase</h2>
  *
- * 旧的 Aimbot/AutonShoot 仍然可用、未删除。本类<b>默认 IDLE 且 hasControl=false 时完全不碰任何电机</b>,
- * 所以在没人按新按键之前,机器人行为与重构前 100% 一致。只有显式 {@code setDesiredGoal(非IDLE)} 后才接管 shooter+feeder。验证通过后,再单独一个
- * commit 把旧命令收编进来——这次不删。
- *
- * <h2>安全不变量(全部由 {@link ShotGate} 纯函数 + JUnit 背书)</h2>
+ * 现有代码所有执行路径(旧 Aimbot/AutonShoot/AutonTrench、povLeft 手动飞轮、povDown 手动喂球)都是 {@code Command} 且 {@code
+ * addRequirements(...)}。WPILib 调度器只在<b>命令之间</b>按 requirement 仲裁, <b>不会</b>仲裁某个 subsystem 自己的 {@code
+ * periodic()}。所以若本类做成 SubsystemBase 并在 periodic 里 写电机,就会和那些手动命令每 20ms 对打(抖动)。因此本类不写电机,只:
  *
  * <ul>
- *   <li>disabled → 强制 IDLE,清零所有输出;
- *   <li>喂球当且仅当 {@code wantShoot && enabled && alliancePresent && shot.isValid() && atSpeed &&
- *       atAngle};
- *   <li>联盟未分配时距离按 Blue 默认 → 不开火(防瞄错目标)。
+ *   <li>持有 {@link AimingParameters}(距离 + dashboard 可调旋钮);
+ *   <li>生产带 requirement 的 {@link AimAndShoot} 命令,交给调度器与手动绑定互锁。
  * </ul>
  *
- * <h2>已知边界(v1)</h2>
+ * 安全逻辑仍由纯函数 {@link ShotGate} + {@link frc.robot.subsystems.ShooterSubsystem.ShotCalculator} 承担(都有
+ * JUnit)。命令只是“谁来调用它们”。
  *
- * <ul>
- *   <li><b>不</b>控制底盘朝向(操作手手动瞄准,或仍用旧 Aimbot);drive/auto 收编是后续切片。
- *   <li>hood 上电归位(Robot.autonomousInit/teleopInit 的 runHoodHoming)与本类抢 hood:本类仅在 hasControl 后命令
- *       hood,而归位发生在 init(此时 hasControl=false 不会冲突)。<b>归位期间别按射球键。</b>
- *   <li>无球检测传感器(全机器人无 beam-break/CANrange),feeder 仅靠 shooter/hood 就绪门控,不检测球到位。
- * </ul>
+ * <h2>本切片边界</h2>
+ *
+ * AimAndShoot <b>不转底盘</b>(驾驶员手动瞄准,与旧 Aimbot 不同);<b>不</b>摆 intake(swing 用不到,已去除)。 底盘对准 / 收编 auto
+ * 是后续切片。无球检测传感器,feeder 仅靠 shooter/hood 就绪门控。
  */
-public class Superstructure extends SubsystemBase {
-
-  /** 顶层目标。每个值对应一组对各机构的请求。 */
-  public enum SuperGoal {
-    /** 不接管任何机构(additive:让旧命令完全拥有电机)。 */
-    IDLE,
-    /** 飞轮转到目标转速 + hood 到角,但不喂球(预热)。 */
-    SPINUP,
-    /** 在 spinup 基础上,就绪门控全满足时喂球。 */
-    SHOOT
-  }
-
+public class Superstructure {
   private final ShooterSubsystem shooter;
   private final FeederSubsystem feeder;
   private final AimingParameters aiming = new AimingParameters();
-
-  private SuperGoal desiredGoal = SuperGoal.IDLE;
-  /** 是否已被新路径接管。false = 纯 additive,periodic 不碰电机。 */
-  private boolean hasControl = false;
-
-  // 喂球电压(dashboard 可调,沿用 RobotContainer 旧默认 12V)
-  private final LoggedTunableNumber feedIndexerVolts =
-      new LoggedTunableNumber("Superstructure/FeedIndexerVolts", 12.0);
-  private final LoggedTunableNumber feedBeltVolts =
-      new LoggedTunableNumber("Superstructure/FeedBeltVolts", 12.0);
-
-  /** 飞轮到速容差(rps),与 ShooterSubsystem.isAtSetSpeed 的硬编码 1.0 对齐。 */
-  private static final double SHOOTER_TOLERANCE_RPS = 1.0;
-
-  /** hood 到角容差(度)。 */
-  private static final double HOOD_TOLERANCE_DEG = 1.5;
 
   public Superstructure(ShooterSubsystem shooter, FeederSubsystem feeder) {
     this.shooter = shooter;
     this.feeder = feeder;
   }
 
-  /** 请求顶层目标。任何非 IDLE 目标会让本类接管 shooter+feeder。 */
-  public void setDesiredGoal(SuperGoal goal) {
-    desiredGoal = goal;
-    if (goal != SuperGoal.IDLE) {
-      hasControl = true;
-    }
+  /** 距离 + 可调旋钮的瞄准参数源(供命令与日志读取)。 */
+  public AimingParameters aiming() {
+    return aiming;
   }
 
-  public SuperGoal getDesiredGoal() {
-    return desiredGoal;
-  }
-
-  /** hood 是否到目标角。getHoodAngle 是机构 rotations,×360 转度与 shot 的度比较。 */
-  private boolean hoodAtAngle(double targetDeg) {
-    double measuredDeg = shooter.getHoodAngle() * 360.0;
-    return ShotGate.isNear(measuredDeg, targetDeg, HOOD_TOLERANCE_DEG);
-  }
-
-  private void commandIdleOutputs() {
-    shooter.setShooterVoltage(0.0);
-    feeder.setIndexerVoltage(0.0);
-    feeder.setBeltVoltage(0.0);
-  }
-
-  @Override
-  public void periodic() {
-    boolean enabled = !DriverStation.isDisabled();
-    boolean alliancePresent = aiming.alliancePresent();
-    ShooterSetpoint shot = aiming.currentShot();
-
-    boolean shooterAtSpeed = shooter.isAtSetSpeed(shot.flywheelRps());
-    boolean hoodAtAngle = hoodAtAngle(shot.hoodAngleDeg());
-    boolean feeding = false;
-
-    if (!enabled) {
-      // disabled:强制 IDLE,若曾接管则清零输出(fail-safe)
-      if (hasControl) {
-        commandIdleOutputs();
-      }
-      desiredGoal = SuperGoal.IDLE;
-    } else if (!hasControl) {
-      // 纯 additive:尚未接管,完全不碰电机,让旧命令拥有机构
-    } else {
-      switch (desiredGoal) {
-        case SPINUP:
-        case SHOOT:
-          shooter.setShooterRps(shot.flywheelRps());
-          shooter.setHoodAngle(shot.hoodAngleDeg());
-          feeding =
-              ShotGate.shouldFeed(
-                  desiredGoal == SuperGoal.SHOOT,
-                  enabled,
-                  alliancePresent,
-                  shooterAtSpeed,
-                  hoodAtAngle,
-                  shot);
-          if (feeding) {
-            feeder.setIndexerVoltage(feedIndexerVolts.get());
-            feeder.setBeltVoltage(feedBeltVolts.get());
-          } else {
-            feeder.setIndexerVoltage(0.0);
-            feeder.setBeltVoltage(0.0);
-          }
-          break;
-        case IDLE:
-        default:
-          commandIdleOutputs();
-          break;
-      }
-    }
-
-    // 日志(AdvantageScope 可见,便于上车诊断为什么没喂球)
-    Logger.recordOutput("Superstructure/DesiredGoal", desiredGoal.toString());
-    Logger.recordOutput("Superstructure/HasControl", hasControl);
-    Logger.recordOutput("Superstructure/Enabled", enabled);
-    Logger.recordOutput("Superstructure/AlliancePresent", alliancePresent);
-    Logger.recordOutput("Superstructure/DistanceMeters", aiming.distanceMeters());
-    Logger.recordOutput("Superstructure/TargetFlywheelRps", shot.flywheelRps());
-    Logger.recordOutput("Superstructure/TargetHoodDeg", shot.hoodAngleDeg());
-    Logger.recordOutput("Superstructure/ShotValid", shot.isValid());
-    Logger.recordOutput("Superstructure/ShooterAtSpeed", shooterAtSpeed);
-    Logger.recordOutput("Superstructure/HoodAtAngle", hoodAtAngle);
-    Logger.recordOutput("Superstructure/Feeding", feeding);
-    Logger.recordOutput(
-        "Superstructure/MeasuredHoodDeg",
-        MathUtil.applyDeadband(shooter.getHoodAngle() * 360.0, 0));
+  /**
+   * 生产“瞄准距离 → spinup + hood + 就绪门控喂球”的命令。requires shooter+feeder,自动与手动绑定互锁。 用 {@code whileTrue}
+   * 绑定:松开即结束,{@link AimAndShoot#end} 清零所有输出。
+   */
+  public Command aimAndShoot() {
+    return new AimAndShoot(shooter, feeder, aiming);
   }
 }
