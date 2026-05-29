@@ -28,32 +28,8 @@ public final class Constants {
     public static final double downtrench = 0.66599;
     public static final double uptrench = 7.40334;
     public static final double autonShootTimeoutSeconds = 3.0;
-
-    public static InterpolatingDoubleTreeMap distanceToShooterRPS =
-        new InterpolatingDoubleTreeMap();
-    public static InterpolatingDoubleTreeMap distanceToHoodAngle = new InterpolatingDoubleTreeMap();
-
-    static {
-      distanceToShooterRPS.put(0.834, 50.0);
-      distanceToShooterRPS.put(1.318, 50.0);
-      distanceToShooterRPS.put(1.877, 53.0);
-      distanceToShooterRPS.put(2.384, 55.0);
-      distanceToShooterRPS.put(2.873, 57.0);
-      distanceToShooterRPS.put(3.305, 58.0);
-      distanceToShooterRPS.put(3.853, 59.0);
-      distanceToShooterRPS.put(4.365, 61.0);
-      distanceToShooterRPS.put(4.866, 63.0);
-
-      distanceToHoodAngle.put(0.834, 0.0);
-      distanceToHoodAngle.put(1.318, 4.0);
-      distanceToHoodAngle.put(1.877, 7.0);
-      distanceToHoodAngle.put(2.384, 10.0);
-      distanceToHoodAngle.put(2.873, 11.0);
-      distanceToHoodAngle.put(3.305, 13.0);
-      distanceToHoodAngle.put(3.853, 17.0);
-      distanceToHoodAngle.put(4.365, 21.0);
-      distanceToHoodAngle.put(4.866, 23.0);
-    }
+    // 旧手调查表 distanceToShooterRPS / distanceToHoodAngle 已随 AutonShoot 一并删除——
+    // shooter setpoint 现由 ShotCalculator(sim V3.1)+ AimingParameters 提供。
   }
 
   public static final class MotorCANIds {

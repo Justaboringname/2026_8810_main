@@ -12,7 +12,7 @@ import frc.robot.subsystems.drive.Drive;
  *
  * <h2>为什么不是 SubsystemBase</h2>
  *
- * 现有代码所有执行路径(旧 Aimbot/AutonShoot/AutonTrench、povLeft 手动飞轮、povDown 手动喂球)都是 {@code Command} 且 {@code
+ * 现有代码所有执行路径(AutonTrench、povLeft 手动飞轮、povDown 手动喂球)都是 {@code Command} 且 {@code
  * addRequirements(...)}。WPILib 调度器只在<b>命令之间</b>按 requirement 仲裁, <b>不会</b>仲裁某个 subsystem 自己的 {@code
  * periodic()}。所以若本类做成 SubsystemBase 并在 periodic 里 写电机,就会和那些手动命令每 20ms 对打(抖动)。因此本类不写电机,只:
  *
