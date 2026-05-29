@@ -2,7 +2,7 @@ package frc.robot.subsystems.IntakeSubsystem;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Robot;
+import frc.robot.Constants;
 import org.littletonrobotics.junction.Logger;
 
 public class IntakeSubsystem extends SubsystemBase {
@@ -23,10 +23,10 @@ public class IntakeSubsystem extends SubsystemBase {
       throw new IllegalStateException("IntakeSubsystem already constructed");
     }
     m_Instance = this;
-    if (Robot.isReal()) {
-      io = new IntakeIOPheonix6();
-    } else {
-      io = new IntakeIO() {};
+    switch (Constants.currentMode) {
+      case REAL -> io = new IntakeIOPheonix6();
+      case SIM -> io = new IntakeIOSim();
+      default -> io = new IntakeIO() {};
     }
     io.pivotSetZero();
   }

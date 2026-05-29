@@ -2,7 +2,7 @@ package frc.robot.subsystems.FeederSubsystem;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Robot;
+import frc.robot.Constants;
 import org.littletonrobotics.junction.Logger;
 
 public class FeederSubsystem extends SubsystemBase {
@@ -23,10 +23,10 @@ public class FeederSubsystem extends SubsystemBase {
       throw new IllegalStateException("FeederSubsystem already constructed");
     }
     m_Instance = this;
-    if (Robot.isReal()) {
-      io = new FeederIOPheonix6();
-    } else {
-      io = new FeederIO() {};
+    switch (Constants.currentMode) {
+      case REAL -> io = new FeederIOPheonix6();
+      case SIM -> io = new FeederIOSim();
+      default -> io = new FeederIO() {};
     }
   }
 

@@ -45,8 +45,11 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Constants.Mode;
 import frc.robot.Constants.PoseEstimatorConstants;
+import frc.robot.Robot;
 import frc.robot.generated.TunerConstants;
-import frc.robot.util.LimelightHelpers;
+import frc.robot.subsystems.vision.VisionIO;
+import frc.robot.subsystems.vision.VisionIOInputsAutoLogged;
+import frc.robot.subsystems.vision.VisionIOLimelight;
 import frc.robot.util.LocalADStarAK;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -90,6 +93,10 @@ public class Drive extends SubsystemBase {
   static final Lock odometryLock = new ReentrantLock();
   private final GyroIO gyroIO;
   private final GyroIOInputsAutoLogged gyroInputs = new GyroIOInputsAutoLogged();
+  // 视觉薄 seam:real 用 Limelight,sim/replay 用空 IO(replay 时 processInputs 回放 logged 值)
+  private final VisionIO visionIO =
+      Robot.isReal() ? new VisionIOLimelight("limelight") : new VisionIO() {};
+  private final VisionIOInputsAutoLogged visionInputs = new VisionIOInputsAutoLogged();
   private final Module[] modules = new Module[4]; // FL, FR, BL, BR
   private final SysIdRoutine sysId;
   private final Alert gyroDisconnectedAlert =
@@ -244,35 +251,30 @@ public class Drive extends SubsystemBase {
   }
 
   public void updateVision() {
-    LimelightHelpers.SetIMUMode("limelight", 1);
-    LimelightHelpers.SetRobotOrientation(
-        "limelight", getPose().getRotation().getDegrees(), 0, 0, 0, 0, 0);
-    LimelightHelpers.PoseEstimate mt2 =
-        LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight");
-    // ImprovedLL.MT2stddevs devs = ImprovedLL.getmt2Devs();
-    // ImprovedLL.mt2stdDev stdDev = ImprovedLL.getmt2Dev(RobotContainer.m_Limelight);
-    if (mt2 == null) {
+    // 薄 seam:原来直接调 LimelightHelpers 的部分收到 VisionIO 后面(replay 确定性 + 可测)。
+    // 下面的接受/拒绝门控与融合逐字保持重构前一致,只是数据源从 mt2 换成 logged visionInputs。
+    visionIO.updateInputs(visionInputs, getPose().getRotation().getDegrees());
+    Logger.processInputs("Vision", visionInputs);
+
+    if (!visionInputs.connected) {
       DriverStation.reportWarning("limelight" + " Diconnected!", false);
       return;
     }
 
     if (Math.abs(getChassisSpeeds().omegaRadiansPerSecond) <= 2 * Math.PI
-        && mt2.tagCount > 0
-        && mt2.avgTagDist < 4
+        && visionInputs.tagCount > 0
+        && visionInputs.avgTagDist < 4
         && Math.hypot(getChassisSpeeds().vxMetersPerSecond, getChassisSpeeds().vyMetersPerSecond)
             < 2) {
       addVisionMeasurement(
-          mt2.pose,
-          mt2.timestampSeconds,
+          visionInputs.estimatedPose,
+          visionInputs.timestampSeconds,
           VecBuilder.fill(
-              PoseEstimatorConstants.tAtoDev.get(mt2.avgTagArea),
-              PoseEstimatorConstants.tAtoDev.get(mt2.avgTagArea),
-              100000000)
-          // VecBuilder.fill(0.00001,0.00001, 100000000.)
-          // VecBuilder.fill(devs.xdev, devs.ydev, 100000000.)
-          );
-      SmartDashboard.putNumber("tA", mt2.avgTagArea);
-      SmartDashboard.putNumber("Dev", PoseEstimatorConstants.tAtoDev.get(mt2.avgTagArea));
+              PoseEstimatorConstants.tAtoDev.get(visionInputs.avgTagArea),
+              PoseEstimatorConstants.tAtoDev.get(visionInputs.avgTagArea),
+              100000000));
+      SmartDashboard.putNumber("tA", visionInputs.avgTagArea);
+      SmartDashboard.putNumber("Dev", PoseEstimatorConstants.tAtoDev.get(visionInputs.avgTagArea));
     }
   }
 

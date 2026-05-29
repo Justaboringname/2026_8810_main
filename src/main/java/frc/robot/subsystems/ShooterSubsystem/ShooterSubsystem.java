@@ -4,7 +4,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Robot;
+import frc.robot.Constants;
 import org.littletonrobotics.junction.Logger;
 
 public class ShooterSubsystem extends SubsystemBase {
@@ -25,10 +25,10 @@ public class ShooterSubsystem extends SubsystemBase {
       throw new IllegalStateException("ShooterSubsystem already constructed");
     }
     m_Instance = this;
-    if (Robot.isReal()) {
-      io = new ShooterIOPheonix6();
-    } else {
-      io = new ShooterIO() {};
+    switch (Constants.currentMode) {
+      case REAL -> io = new ShooterIOPheonix6();
+      case SIM -> io = new ShooterIOSim();
+      default -> io = new ShooterIO() {};
     }
     io.HoodSetZero();
   }

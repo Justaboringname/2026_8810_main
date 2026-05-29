@@ -7,6 +7,8 @@
 
 package frc.robot;
 
+import static edu.wpi.first.units.Units.Seconds;
+
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.PathPlannerAuto;
@@ -128,7 +130,13 @@ public class RobotContainer {
         break;
     }
 
-    NamedCommands.registerCommand("AIMandShoot", superstructure.aimAndShoot());
+    // Auto 用:加 timeout —— AimAndShoot.isFinished() 永远 false(teleop whileTrue 语义),
+    // 不加 timeout 会在 auto 序列里挂死。teleop 右扳机仍用无 timeout 的 whileTrue 版本。
+    NamedCommands.registerCommand(
+        "AIMandShoot",
+        superstructure
+            .aimAndShoot()
+            .withTimeout(Seconds.of(Constants.aimconstants.autonShootTimeoutSeconds)));
 
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
