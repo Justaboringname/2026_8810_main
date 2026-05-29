@@ -1,6 +1,9 @@
 package frc.robot.subsystems.superstructure;
 
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import frc.robot.Constants;
 import frc.robot.subsystems.ShooterSubsystem.ShotCalculator;
 import frc.robot.subsystems.ShooterSubsystem.ShotCalculator.ShooterSetpoint;
 import frc.robot.subsystems.drive.Drive;
@@ -38,5 +41,23 @@ public class AimingParameters {
   /** DriverStation 是否已分配联盟。false 时距离按 Blue 默认算,目标可能错 → 不应开火。 */
   public boolean alliancePresent() {
     return DriverStation.getAlliance().isPresent();
+  }
+
+  /** 当前联盟是否 Blue(未分配按 Blue 默认,与 Drive.distanceToGoal 的默认一致)。 */
+  public boolean isBlue() {
+    return DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue;
+  }
+
+  /**
+   * 机器人朝向 HUB 的目标航向(field frame,弧度)。纯函数,便于 JUnit:与旧 Aimbot 的 atan2 逐字一致。
+   *
+   * @param robotX 机器人 X(米,field frame)
+   * @param robotY 机器人 Y(米,field frame)
+   * @param blue true=蓝方目标点,false=红方
+   */
+  public static double targetHeadingRadians(double robotX, double robotY, boolean blue) {
+    Translation2d goal =
+        blue ? Constants.aimconstants.bluegoalpos : Constants.aimconstants.redgoalpos;
+    return Math.atan2(goal.getY() - robotY, goal.getX() - robotX);
   }
 }

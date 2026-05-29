@@ -2,8 +2,10 @@ package frc.robot.subsystems.superstructure;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.commands.AimAndShoot;
+import frc.robot.commands.AutoAimAndShoot;
 import frc.robot.subsystems.FeederSubsystem.FeederSubsystem;
 import frc.robot.subsystems.ShooterSubsystem.ShooterSubsystem;
+import frc.robot.subsystems.drive.Drive;
 
 /**
  * 顶层协调器(非 SubsystemBase 的工厂/持有者)。
@@ -48,5 +50,15 @@ public class Superstructure {
    */
   public Command aimAndShoot() {
     return new AimAndShoot(shooter, feeder, aiming);
+  }
+
+  /**
+   * Auto 专用:自动转底盘对准 HUB + spinup + hood + 就绪门控喂球。requires drive+shooter+feeder。 命令本身 isFinished 永
+   * false,调用方(NamedCommand)需用 {@code withTimeout} 结束。
+   *
+   * @param drive 底盘子系统(auto 要转向对准,故注入 drive)
+   */
+  public Command autoAimAndShoot(Drive drive) {
+    return new AutoAimAndShoot(drive, shooter, feeder, aiming);
   }
 }

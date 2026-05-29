@@ -132,10 +132,12 @@ public class RobotContainer {
 
     // Auto 用:加 timeout —— AimAndShoot.isFinished() 永远 false(teleop whileTrue 语义),
     // 不加 timeout 会在 auto 序列里挂死。teleop 右扳机仍用无 timeout 的 whileTrue 版本。
+    // Auto:自动转底盘对准 HUB + spinup + 门控喂球(复用旧 Aimbot 的转向数学)。
+    // isFinished 永 false → 必须包 withTimeout 才能在 auto 序列里结束。用 Time 重载避歧义。
     NamedCommands.registerCommand(
         "AIMandShoot",
         superstructure
-            .aimAndShoot()
+            .autoAimAndShoot(drive)
             .withTimeout(Seconds.of(Constants.aimconstants.autonShootTimeoutSeconds)));
 
     // Set up auto routines

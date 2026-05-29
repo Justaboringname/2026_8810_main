@@ -20,7 +20,7 @@ public final class ShotGate {
   private ShotGate() {}
 
   /**
-   * 是否允许此刻喂球。
+   * 是否允许此刻喂球(teleop:不门控底盘朝向,驾驶员手动瞄)。委托到 7 参版,{@code aimedAtTarget=true}。
    *
    * @param wantShoot 操作手/auto 此刻是否请求射球
    * @param enabled 机器人是否 enabled(disabled 一律 false)
@@ -36,9 +36,28 @@ public final class ShotGate {
       boolean shooterAtSpeed,
       boolean hoodAtAngle,
       ShooterSetpoint shot) {
+    return shouldFeed(wantShoot, enabled, alliancePresent, true, shooterAtSpeed, hoodAtAngle, shot);
+  }
+
+  /**
+   * 是否允许此刻喂球(auto:多一个底盘朝向到位门 {@code aimedAtTarget})。
+   *
+   * <p>auto 自动转底盘对准 HUB,所以必须等转向到位才喂——否则会朝错方向喷一坨球。
+   *
+   * @param aimedAtTarget 底盘是否已对准 HUB(转向 PID atSetpoint)
+   */
+  public static boolean shouldFeed(
+      boolean wantShoot,
+      boolean enabled,
+      boolean alliancePresent,
+      boolean aimedAtTarget,
+      boolean shooterAtSpeed,
+      boolean hoodAtAngle,
+      ShooterSetpoint shot) {
     return wantShoot
         && enabled
         && alliancePresent
+        && aimedAtTarget
         && shot != null
         && shot.isValid()
         && shooterAtSpeed

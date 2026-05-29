@@ -1,5 +1,6 @@
 package frc.robot.subsystems.superstructure;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -72,5 +73,38 @@ class ShotGateTest {
   @Test
   void isNearOutsideToleranceFalse() {
     assertFalse(ShotGate.isNear(50.6, 50.0, 0.5), "容差外应 false");
+  }
+
+  // ---- auto 7 参重载:多一个"转向到位"前置门 ----
+
+  @Test
+  void autoAllConditionsMetAllowsFeed() {
+    assertTrue(
+        ShotGate.shouldFeed(true, true, true, true, true, true, validShot()), "auto 全满足应允许喂球");
+  }
+
+  @Test
+  void autoNotAimedBlocks() {
+    // auto 自动转底盘:没对准 HUB 时绝不喂(否则朝错方向喷一坨)
+    assertFalse(ShotGate.shouldFeed(true, true, true, false, true, true, validShot()), "底盘未对准不应喂");
+  }
+
+  @Test
+  void autoOtherGatesStillApply() {
+    // 7 参版同样受其余门约束:未到速 / 越界 setpoint 仍不喂(即使已对准)
+    assertFalse(
+        ShotGate.shouldFeed(true, true, true, true, false, true, validShot()), "已对准但未到速不应喂");
+    assertFalse(
+        ShotGate.shouldFeed(true, true, true, true, true, true, invalidShot()),
+        "已对准但 setpoint 不可信不应喂");
+  }
+
+  @Test
+  void sixArgOverloadDoesNotGateOnAim() {
+    // teleop 6 参版等价于 7 参版 aimedAtTarget=true(驾驶员手动瞄,不门控朝向)
+    assertEquals(
+        ShotGate.shouldFeed(true, true, true, true, true, validShot()),
+        ShotGate.shouldFeed(true, true, true, true, true, true, validShot()),
+        "6 参版应等价于 7 参版 aimed=true");
   }
 }
